@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from limiter import RateLimiter
 
 from logger import get_logger, full_log
-logger = get_logger('scraper/scraper.py')
+logger = get_logger('test_parser.py')
 
 
 class BaseScraper(ABC):
@@ -163,7 +163,7 @@ class WBScraper(BaseScraper):
                     #         print(f'Content is not an image: {content_type}')
                     # else:
                     #     print(f'Failed: {response.status}')
-        except BaseException as e:
+        except Exception as e:
             full_log(logger=logger, where="/_get_product_image")
             raise e
         finally:
