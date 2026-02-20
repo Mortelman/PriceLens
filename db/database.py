@@ -19,9 +19,6 @@ class Database:
         self.conn: psycopg2.extensions.connection | None = None
 
     def ensure_database(self) -> None:
-        """
-        Подключается к служебной БД 'postgres' и создает нашу БД, если ее еще нет.
-        """
         conn = psycopg2.connect(
             dbname="postgres",
             user=self.user,
@@ -29,6 +26,7 @@ class Database:
             host=self.host,
             port=self.port
         )
+        conn.autocommit = True
 
         try:
             with conn.cursor() as cur:
@@ -43,9 +41,6 @@ class Database:
             conn.close()
 
     def connect_to_db(self) -> None:
-        """
-        Гарантирует существование БД, подключается и создает таблицы при первом запуске.
-        """
         self.ensure_database()
 
         self.conn = psycopg2.connect(
@@ -64,9 +59,16 @@ class Database:
             self.conn = None
 
     def _init_schema(self) -> None:
+        timescaledb_available = False
         with self.conn.cursor() as cur:
-            # TimescaleDB extension
-            cur.execute("CREATE EXTENSION IF NOT EXISTS timescaledb")
+            try:
+                cur.execute("CREATE EXTENSION IF NOT EXISTS timescaledb")
+                timescaledb_available = True
+            except Exception as e:
+                print(f"Warning: TimescaleDB extension not available: {e}")
+                print("Continuing without TimescaleDB (prices table will be regular table)")
+                self.conn.rollback()
+                timescaledb_available = False
 
             # Таблица users
             cur.execute(
@@ -109,10 +111,9 @@ class Database:
                     ) THEN
                         ALTER TABLE products
                         ADD CONSTRAINT products_marketplace_id_key
-                        UNIQUE (marketplace, id);
-                    END IF
-                END
-                $$
+                        UNIQUE (marketplace, internal_id, size);
+                    END IF;
+                END $$;
                 """
             )
 
@@ -163,14 +164,19 @@ class Database:
             )
 
             # Превращаем prices в hypertable
-            cur.execute(
-                """
-                SELECT create_hypertable(
-                    'prices',
-                    'timestamp',
-                    if_not_exists => TRUE
-                )
-                """
-            )
+            if timescaledb_available:
+                try:
+                    cur.execute(
+                        """
+                        SELECT create_hypertable(
+                            'prices',
+                            'timestamp',
+                            if_not_exists => TRUE
+                        )
+                        """
+                    )
+                    print("TimescaleDB hypertable created for prices")
+                except Exception as e:
+                    print(f"Warning: Could not create hypertable: {e}")
 
         self.conn.commit()

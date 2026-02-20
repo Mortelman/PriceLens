@@ -2,10 +2,8 @@ import logging
 from rich.logging import RichHandler
 import traceback
 
-# Настройки форматирования
 FORMAT = "[%(asctime)s] [%(levelname)s] [%(name)s] - %(message)s"
 
-# Настройка логгера
 logging.basicConfig(
     level=logging.INFO,
     format=FORMAT,
