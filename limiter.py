@@ -4,11 +4,6 @@ from time import monotonic
 
 
 class RateLimiter:
-    """
-    Контролирует количество запросов:
-    - не больше limit за period
-    - не больше burst за interval
-    """
 
     def __init__(
         self,
@@ -27,8 +22,8 @@ class RateLimiter:
         self.penalized_status = penalized_status
         self.penalty_weight = penalty_weight
 
-        self._period_events: deque[tuple[float, int]] = deque()    # [(timestamp, weight), ...]
-        self._interval_events: deque[tuple[float, int]] = deque()  # [(timestamp, weight), ...]
+        self._period_events: deque[tuple[float, int]] = deque()
+        self._interval_events: deque[tuple[float, int]] = deque()
         self._period_total = 0
         self._interval_total = 0
         self._lock = asyncio.Lock()
