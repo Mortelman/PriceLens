@@ -31,14 +31,6 @@ services:
       api:
         condition: service_started
 
-  # scheduler:
-  #   <<: *app-service
-  #   container_name: scheduler
-  #   build:
-  #     context: ./apps/scheduler
-  #     dockerfile: Dockerfile
-  #   command: python apps/scheduler/main.py
-
   # worker-ml:
   #   <<: *app-service
   #   container_name: worker-ml
