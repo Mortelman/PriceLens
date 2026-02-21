@@ -1,0 +1,35 @@
+views {
+  view overview {
+    title "PriceLens architecture"
+    include *
+  }
+
+  view containers of pricelens {
+    title "Containers of PriceLens"
+    include user
+    include email-provider
+    include pricelens.web
+    include pricelens.api
+
+    include pricelens.ml
+    include pricelens.parser
+    include pricelens.notifier
+
+    include pricelens.postgres
+    include pricelens.redis
+    include pricelens.rabbit
+  }
+
+  view parser {
+    title "Scraper Internals"
+    include pricelens.parser
+    include pricelens.parser.wb_scraper
+    include pricelens.parser.aliexpress_scraper
+    include pricelens.parser.avito_scraper
+    include wildberries
+    include aliexpress
+    include avito
+    include pricelens.rabbit
+    include pricelens.postgres
+  }
+}

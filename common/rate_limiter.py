@@ -4,7 +4,6 @@ from time import monotonic
 
 
 class RateLimiter:
-
     def __init__(
         self,
         *,
@@ -30,14 +29,17 @@ class RateLimiter:
 
     def _delete_expired(self, now: float) -> None:
         while self._period_events and now - self._period_events[0][0] >= self.period:
-            timestamp, weight = self._period_events.popleft()
+            _, weight = self._period_events.popleft()
             self._period_total -= weight
         while self._interval_events and now - self._interval_events[0][0] >= self.interval:
-            timestamp, weight = self._interval_events.popleft()
+            _, weight = self._interval_events.popleft()
             self._interval_total -= weight
 
     def _can_take(self, weight: int) -> bool:
-        return (self._period_total + weight) <= self.limit and (self._interval_total + weight) <= self.burst
+        return (
+            (self._period_total + weight) <= self.limit
+            and (self._interval_total + weight) <= self.burst
+        )
 
     def _time_until_available(
         self,
@@ -50,14 +52,14 @@ class RateLimiter:
         threshold: int,
     ) -> float:
         if total + weight <= threshold:
-            return 0
+            return 0.0
 
         excess = (total + weight) - threshold
         cumulative = 0
-        for timestamp, weight in events:
-            cumulative += weight
+        for timestamp, event_weight in events:
+            cumulative += event_weight
             if cumulative >= excess:
-                return max(0, (timestamp + window) - now)
+                return max(0.0, (timestamp + window) - now)
         return window
 
     def _append(self, now: float, weight: int) -> None:

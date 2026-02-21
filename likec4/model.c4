@@ -1,0 +1,58 @@
+model {
+  user = actor "User" "Search goods, tracks prices and receives notifications"
+
+  wildberries = external "Wildberries" "Marketplace"
+  aliexpress = external "AliExpress" "Marketplace"
+  avito = external "Avito" "Marketplace"
+
+  email-provider = external "Email Provider" {
+    description "Sends email notifications to users"
+    technology "SendGrid API"
+  }
+
+  pricelens = system "PriceLens" {
+    description "A price tracking and prediction service for online marketplaces"
+
+    web = container "Web App" "UI for search, subscriptions and analytics"
+    api = container "API" "Main HTTP backend" {
+      #critical
+    }
+    parser = container "Scraper Worker" "Background scraping and DB updates" {
+      #critical
+      wb_scraper = component "Wildberries Scraper" "Fetches and parses Wildberries data"
+      aliexpress_scraper = component "AliExpress Scraper" "Fetches and parses AliExpress data"
+      avito_scraper = component "Avito Scraper" "Fetches and parses Avito data"
+    }
+    notifier = container "Notification Worker" "Sends alerts for price drop events"
+    ml = container "ML Worker" "Builds price predictions from history"
+    postgres = database "PostgreSQL + TimescaleDB" "Products, prices, subscriptions, predictions" {
+      #critical
+    }
+    rabbit = queue "RabbitMQ" "Event bus: scrape.requested, price.updated" {
+      #critical
+    }
+    redis = container "Redis" "Cache"
+  }
+
+  user -> pricelens.web "Uses"
+  pricelens.web -> pricelens.api "REST/HTTP"
+
+  pricelens.api -> pricelens.postgres "Read/write data"
+  pricelens.api -[async]-> pricelens.rabbit "Publish scrape.requested"
+
+  pricelens.rabbit -[async]-> pricelens.parser "Deliver scrape.requested"
+  pricelens.parser -> pricelens.postgres "Upsert products/prices"
+  pricelens.parser -[async]-> pricelens.rabbit "Publish price.updated"
+
+  pricelens.rabbit -[async]-> pricelens.notifier "Deliver price.updated"
+  pricelens.notifier -> pricelens.postgres "Read subscriptions"
+  pricelens.notifier -> email-provider "Send price drop alert"
+  pricelens.ml -> pricelens.postgres "Read prices, write predictions"
+
+  pricelens.api -> pricelens.redis "Cache hot reads"
+  pricelens.parser -> pricelens.redis "Acquire scrape locks"
+
+  pricelens.parser.wb_scraper -> wildberries "Fetch catalog and product prices"
+  pricelens.parser.aliexpress_scraper -> aliexpress "Fetch catalog and product prices"
+  pricelens.parser.avito_scraper -> avito "Fetch catalog and product prices"
+}

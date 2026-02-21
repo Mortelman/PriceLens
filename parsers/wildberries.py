@@ -1,12 +1,13 @@
-import asyncio
-import aiohttp
 from abc import ABC, abstractmethod
 from typing import Optional
-from limiter import RateLimiter
-from db.repository import AsyncDatabase
 
-from logger import get_logger, full_log
-logger = get_logger('test_parser.py')
+import aiohttp
+
+from common.rate_limiter import RateLimiter
+from common.logger import full_log, get_logger
+from db.database import AsyncDatabase
+
+logger = get_logger("parsers.wildberries")
 
 
 class BaseScraper(ABC):
@@ -75,7 +76,6 @@ class WBScraper(BaseScraper):
     async def fetch_product(self, session: aiohttp.ClientSession, **kwargs) -> list[dict]:
         article = self._get_article(**kwargs)
         url = self._get_url(self.product_url, article)
-        print(url)
         async with session.get(url=url, headers=self.headers) as response:
             status = response.status
 
@@ -164,59 +164,4 @@ class WBScraper(BaseScraper):
         except Exception as e:
             logger.error(f"Failed to save products to database: {e}")
             full_log(logger=logger, where="/save_to_db")
-            raise
-
-
-async def main() -> None:
-    db = AsyncDatabase(
-        dbname="pricelens",
-        user="postgres",
-        password="postgres",
-        host="localhost",
-        port=5432
-    )
-
-    try:
-        await db.connect()
-        logger.info("Connected to database")
-
-        scraper = WBScraper(db=db)
-
-        url = 'https://www.wildberries.ru/catalog/15728047/detail.aspx'
-        async with aiohttp.ClientSession() as session:
-            product_info = await scraper.fetch_product(session, url=url)
-
-        print(f"\n{'=' * 60}")
-        print(f"Parsed {len(product_info)} product variants:")
-        print(f"{'=' * 60}\n")
-        for product in product_info:
-            print(f"Name: {product['name']}")
-            print(f"Brand: {product['brand']}")
-            print(f"Size: {product['size']}")
-            print(f"Price: {product['price']} ₽")
-            print(f"Quantity: {product['quantity']}")
-            print(f"Image: {product['image_url'][:50]}..." if product['image_url'] else "No image")
-            print("-" * 60)
-
-        product_ids = await scraper.save_to_db(product_info)
-        print(f"\n✓ Saved to database with IDs: {product_ids}\n")
-
-    except Exception as e:
-        logger.error(f"Error in main: {e}")
-        full_log(logger=logger, where="/main")
-    finally:
-        await db.close()
-        logger.info("Database connection closed")
-
-
-async def main_without_db() -> None:
-    url = 'https://www.wildberries.ru/catalog/15728047/detail.aspx'
-    scraper = WBScraper()
-    async with aiohttp.ClientSession() as session:
-        product_info = await scraper.fetch_product(session, url=url)
-    for product in product_info:
-        print(product, 2*'\n')
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
+            raise e

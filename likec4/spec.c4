@@ -1,0 +1,41 @@
+specification {
+  element actor {
+    style {
+      shape person
+      color indigo
+    }
+  }
+  element system {
+    style {
+      color blue
+    }
+  }
+  element container
+  element component
+  element database {
+    style {
+      shape storage
+      color green
+    }
+  }
+
+  element queue {
+    style {
+      shape queue
+      color amber
+    }
+  }
+
+  element external {
+    style {
+      color muted
+    }
+  }
+
+  relationship async {
+    color amber
+    line dotted
+  }
+
+  tag critical
+}
